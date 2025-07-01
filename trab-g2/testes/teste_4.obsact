@@ -1,0 +1,6 @@
+dispositivo : { celular , movimento }
+dispositivo : { hidrometro , umidade }
+dispositivo : { lampada , potencia }
+dispositivo : { Monitor }
+set potencia = 100.
+se movimento == True entao ligar lampada senao desligar lampada.
