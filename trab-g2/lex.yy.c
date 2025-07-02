@@ -921,35 +921,51 @@ case 27:
 /* rule 27 can match eol */
 YY_RULE_SETUP
 #line 41 "lex_obsact.l"
-{ yylval.var = strdup(yytext); return MSG; }
+{
+    if (yyleng - 2 > 100) {
+        fprintf(stderr, "Erro Léxico: Mensagem excede o limite de 100 caracteres.\n");
+    } else {
+        yylval.var = strdup(yytext);
+        return MSG;
+    }
+}
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 43 "lex_obsact.l"
+#line 50 "lex_obsact.l"
 { yylval.var = strdup(yytext); return NUM; } 
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 46 "lex_obsact.l"
-{ yylval.var = strdup(yytext); return IDENTIFICADOR; }
+#line 53 "lex_obsact.l"
+{
+    if (yyleng > 100) {
+        fprintf(stderr, "Erro Léxico: Identificador '%.100s...' excede o limite de 100 caracteres.\n", yytext);
+
+    } 
+    else {
+        yylval.var = strdup(yytext);
+        return IDENTIFICADOR;
+    }
+}
 	YY_BREAK
 case 30:
 /* rule 30 can match eol */
 YY_RULE_SETUP
-#line 49 "lex_obsact.l"
+#line 64 "lex_obsact.l"
 {  }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 52 "lex_obsact.l"
+#line 67 "lex_obsact.l"
 { fprintf(stderr, "Erro LExico: Caractere inesperado '%s'\n", yytext); }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 55 "lex_obsact.l"
+#line 70 "lex_obsact.l"
 ECHO;
 	YY_BREAK
-#line 953 "lex.yy.c"
+#line 969 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1954,5 +1970,5 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 55 "lex_obsact.l"
+#line 70 "lex_obsact.l"
 

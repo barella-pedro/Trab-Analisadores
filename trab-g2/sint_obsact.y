@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 FILE *saida = NULL; /** Inicializando saida para utilizar mais tarde*/
 void yyerror(const char *s);
@@ -18,29 +19,6 @@ int yylex();
  * Função auxiliar para construir uma única chamada de função em C.
  * Ex: alerta_simples("SensorPorta", "Porta aberta")
  */
-char* construir_chamada_alerta(const char* dados_params, const char* device_nome) {
-    char* copia_params = strdup(dados_params);
-    char* nome_funcao = strtok(copia_params, ",");
-    char* resultado = NULL;
-
-    if (strcmp(nome_funcao, "alerta_simples") == 0) {
-        char* msg = strtok(NULL, ",");
-        // Aloca o tamanho exato necessário
-        resultado = malloc(strlen(nome_funcao) + strlen(device_nome) + strlen(msg) + 7);
-        sprintf(resultado, "%s(%s, %s);", nome_funcao, device_nome, msg);
-
-    } else if (strcmp(nome_funcao, "alerta_composto") == 0) {
-        char* msg = strtok(NULL, ",");
-        char* var_name = strtok(NULL, ",");
-        // Aloca o tamanho exato
-        resultado = malloc(strlen(nome_funcao) + strlen(device_nome) + strlen(msg) + strlen(var_name) + 10);
-        sprintf(resultado, "%s(%s, %s, %s);", nome_funcao, device_nome, msg, var_name);
-    }
-    
-    free(copia_params);
-    return resultado;
-}
-
 /**
  * Função auxiliar para construir o bloco de código para o broadcast.
  */
@@ -107,6 +85,21 @@ char* construir_bloco_broadcast(const char* dados_params, const char* lista_devi
     return bloco_de_codigo;
 }
 
+bool contemNumeros(const char *str) {
+
+    if (str == NULL) {
+        return false;
+    }
+    
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (isdigit(str[i])) {
+            return true; // Encontrou um número, pode parar e retornar true.
+        }
+    }
+    
+    return false;
+}
+
 
 %}
 
@@ -143,15 +136,29 @@ devices:
 device: 
         DISPOSITIVO DOIS_PONTOS ABRE_CHAVES IDENTIFICADOR FECHA_CHAVES
         { 
+            //Quero verificar se o nome do dispositivo possui numeros ou não
+
+            if (contemNumeros($4)) {
+                fprintf(stderr, "Erro: O nome do dispositivo '%s' não pode conter números.\n", $4);
+                exit(EXIT_FAILURE); // Encerra o programa com erro
+            }
             fprintf(saida, "\tchar *%s = \"%s\";\n", $4, $4);
+            fprintf(saida, "\tint %s_status = 0;\n", $4); /* Cria uma variável de status para o dispositivo que comeca desligada */
              /* Liberando a memória alocada para o nome do dispositivo */
+             free($4);
         } 
         |
         DISPOSITIVO DOIS_PONTOS ABRE_CHAVES IDENTIFICADOR VIRGULA IDENTIFICADOR FECHA_CHAVES
         /*TODO Mudar IDENTIFICADOR para dois não terminais específicos */
         {
+            if (contemNumeros($4)) {
+                fprintf(stderr, "Erro: O nome do dispositivo '%s' não pode conter números.\n", $4);
+                exit(EXIT_FAILURE); // Encerra o programa com erro
+            }
+            
             fprintf(saida, "\tchar *%s = \"%s\";\n", $4, $4);
-            fprintf(saida, "\tint %s;\n", $6);
+            fprintf(saida, "\tint %s_status = 0;\n", $4);
+            fprintf(saida, "\tint %s = 0;\n", $6);
             free($6); // Liberando a memória alocada para o sensor
             free($4); // Liberando a memória alocada para o nome do dispositivo
             
@@ -184,8 +191,8 @@ attrib:
         SET IDENTIFICADOR IGUAL var
         {
             fprintf(saida, "\t%s = %s;\n", $2, $4);
-             /* Liberando a memória alocada para o nome do atributo */
-             /* Liberando a memória alocada para o número */
+            free($2);
+            free($4);
         }
         ;
 obsact:
@@ -194,8 +201,8 @@ obsact:
             fprintf(saida, "\tif (%s) {\n", $2);
             fprintf(saida, "\t\t%s \n", $4);
             fprintf(saida, "\t}\n");
-             /* Liberando a memória alocada para a observação */
-             /* Liberando a memória alocada para a ação */
+            free($2); // Liberando a memória alocada para a observação
+            free($4); // Liberando a memória alocada para a ação
 
         }
         |
@@ -206,9 +213,9 @@ obsact:
             fprintf(saida, "\t} else {\n");
             fprintf(saida, "\t\t%s\n", $6);
             fprintf(saida, "\t}\n");
-             /* Liberando a memória alocada para a observação */
-             /* Liberando a memória alocada para a ação */
-             /* Liberando a memória alocada para a ação */
+            free($2); // Liberando a memória alocada para a observação
+            free($4); // Liberando a memória alocada para a ação do if
+            free($6); // Liberando a memória alocada para a ação do else
         }
         ;
 obs:
@@ -221,7 +228,9 @@ obs:
                 sprintf($$, "%s %s %s", $1, $2, $3);
             }
             
-            // Libera a memória das partes que foram usadas
+            free($1); 
+            free($2);
+            free($3);
             
             
             
@@ -237,10 +246,10 @@ obs:
             }
 
             // Libera a memória das partes
-            
-            
-            
-             // Libera a string da condição anterior, que foi copiada
+            free($1);
+            free($2);
+            free($3);
+            free($5);
         }
         ;
 oplogic:
@@ -298,9 +307,10 @@ act:
     action IDENTIFICADOR
     {
         char* resultado = malloc(strlen($1) + strlen($2) + 5);
-        sprintf(resultado, "%s(\"%s\");", $1, $2);
+        sprintf(resultado, "%s(\"%s\", *%s_status );", $1, $2, $2);
         $$ = resultado;
         free($2);
+        free($1);
     }
     |
     /* Alternativa 2: ENVIAR_ALERTA params IDENTIFICADOR */
@@ -340,15 +350,15 @@ params:
             $$ = malloc(strlen($1) + 3 + strlen("alerta_simples"));
             sprintf($$, "alerta_simples, %s", $1);
             printf("%s\n", $$); // Debug: Imprimindo a string formatada
-
+            free($1);
         }
         |
         ABRE_PARENTESES MSG FECHA_PARENTESES
         {
             $$ = malloc(strlen($2) + 3 + strlen("alerta_simples"));
             sprintf($$, "alerta_simples, %s", $2); /* Representando MSG entre parênteses como mensagem */
-             printf("%s\n", $$); // Debug: Imprimindo a string formatada
-
+            printf("%s\n", $$); // Debug: Imprimindo a string formatada
+            free($2);
         }
         |
         ABRE_PARENTESES MSG VIRGULA IDENTIFICADOR FECHA_PARENTESES
@@ -360,6 +370,8 @@ params:
              /* Liberando a memória alocada para a mensagem */
              /* Liberando a memória alocada para a variável */
              printf("%s\n", $$); // Debug: Imprimindo a string formatada
+            free($2);
+            free($4);
         }
         ;
 namedevices:    
@@ -374,6 +386,8 @@ namedevices:
             sprintf($$, "%s, %s", $1, $3);
              /* Liberando a memória alocada para o nome do dispositivo */
              /* Liberando a memória alocada para os nomes dos dispositivos */
+            free($1);
+            free($3);
         }
         ;
 
@@ -410,15 +424,18 @@ int main() {
     
 
     // Correção: trocar "%s" por "%%s" para que a string literal "%s" seja escrita no arquivo.
-    fprintf(saida, "\tvoid ligar(char* namedevice)\n\t{\n\t\tprintf(\"%%s ligado!\\n\", namedevice);\n\t}\n\n");
+    fprintf(saida, "\tvoid ligar(char* namedevice, int *status_device)\n\t{\n\t\tif (*status_device == 1) {\n\t\t\tprintf(\"O Dispositivo ja esta ligado!\\n\");\n\t\t} else {\n\t\t\t*status_device = 1;\n\t\t\tprintf(\"%%s ligado!\\n\", namedevice);\n\t\t}\n\t}\n\n");
 
-    fprintf(saida, "\tvoid desligar(char* namedevice)\n\t{\n\t\tprintf(\"%%s desligado!\\n\", namedevice);\n\t}\n\n");
+    fprintf(saida, "\tvoid desligar(char* namedevice, int* status_device)\n\t{\n\t\tif (*status_device == 0) {\n\t\t\tprintf(\"O Dispositivo ja esta desligado!\\n\");\n\t\t} else {\n\t\t\t*status_device = 0;\n\t\t\tprintf(\"%%s desligado!\\n\", namedevice);\n\t\t}\n\t}\n\n");
+
 
     fprintf(saida, "\tvoid alerta_simples(char* namedevice, char* msg)\n\t{\n\t\tprintf(\"%%s recebeu o alerta:\\n\", namedevice);\n\t\tprintf(\"%%s\\n\", msg);\n\t}\n\n");
 
     // Nota: Você tem duas funções com o mesmo nome "alerta", o que causaria um erro de compilação.
     // Renomeei a segunda para "alerta2" como exemplo.
     fprintf(saida, "\tvoid alerta_comp(char* namedevice, char* msg, char* var)\n\t{\n\t\tprintf(\"%%s recebeu o alerta:\\n\", namedevice);\n\t\tprintf(\"%%s %%s\\n\", msg, var);\n\t}\n\n");
+
+    fprintf(saida, "\tvoid verifica_status(char* namedevice, int *status_device)\n\t{\n\t\tif (*status_device == 1) {\n\t\t\tprintf(\"%%s está ativo!\\n\", namedevice);\n\t\t} else {\n\t\t\tprintf(\"%%s está inativo!\\n\", namedevice);\n\t\t}\n\t}\n\n");
 
     fprintf(saida, "int main() {\n\n");
     yyparse(); //Aqui a mágica acontece e o programa é traduzido.

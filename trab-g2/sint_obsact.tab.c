@@ -73,6 +73,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 FILE *saida = NULL; /** Inicializando saida para utilizar mais tarde*/
 void yyerror(const char *s);
@@ -88,29 +89,6 @@ int yylex();
  * Função auxiliar para construir uma única chamada de função em C.
  * Ex: alerta_simples("SensorPorta", "Porta aberta")
  */
-char* construir_chamada_alerta(const char* dados_params, const char* device_nome) {
-    char* copia_params = strdup(dados_params);
-    char* nome_funcao = strtok(copia_params, ",");
-    char* resultado = NULL;
-
-    if (strcmp(nome_funcao, "alerta_simples") == 0) {
-        char* msg = strtok(NULL, ",");
-        // Aloca o tamanho exato necessário
-        resultado = malloc(strlen(nome_funcao) + strlen(device_nome) + strlen(msg) + 7);
-        sprintf(resultado, "%s(%s, %s);", nome_funcao, device_nome, msg);
-
-    } else if (strcmp(nome_funcao, "alerta_composto") == 0) {
-        char* msg = strtok(NULL, ",");
-        char* var_name = strtok(NULL, ",");
-        // Aloca o tamanho exato
-        resultado = malloc(strlen(nome_funcao) + strlen(device_nome) + strlen(msg) + strlen(var_name) + 10);
-        sprintf(resultado, "%s(%s, %s, %s);", nome_funcao, device_nome, msg, var_name);
-    }
-    
-    free(copia_params);
-    return resultado;
-}
-
 /**
  * Função auxiliar para construir o bloco de código para o broadcast.
  */
@@ -177,9 +155,24 @@ char* construir_bloco_broadcast(const char* dados_params, const char* lista_devi
     return bloco_de_codigo;
 }
 
+bool contemNumeros(const char *str) {
+
+    if (str == NULL) {
+        return false;
+    }
+    
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (isdigit(str[i])) {
+            return true; // Encontrou um número, pode parar e retornar true.
+        }
+    }
+    
+    return false;
+}
 
 
-#line 183 "sint_obsact.tab.c"
+
+#line 176 "sint_obsact.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -643,10 +636,10 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   135,   135,   139,   140,   144,   150,   163,   165,   170,
-     172,   174,   184,   192,   202,   215,   230,   247,   252,   257,
-     262,   267,   272,   279,   281,   285,   290,   298,   307,   319,
-     333,   338,   346,   354,   366,   371,   381,   386
+       0,   128,   128,   132,   133,   137,   151,   170,   172,   177,
+     179,   181,   191,   199,   209,   222,   239,   256,   261,   266,
+     271,   276,   281,   288,   290,   294,   299,   307,   317,   329,
+     343,   348,   356,   364,   378,   383,   395,   400
 };
 #endif
 
@@ -1248,76 +1241,90 @@ yyreduce:
   switch (yyn)
     {
   case 5: /* device: DISPOSITIVO DOIS_PONTOS ABRE_CHAVES IDENTIFICADOR FECHA_CHAVES  */
-#line 145 "sint_obsact.y"
+#line 138 "sint_obsact.y"
         { 
+            //Quero verificar se o nome do dispositivo possui numeros ou não
+
+            if (contemNumeros((yyvsp[-1].var))) {
+                fprintf(stderr, "Erro: O nome do dispositivo '%s' não pode conter números.\n", (yyvsp[-1].var));
+                exit(EXIT_FAILURE); // Encerra o programa com erro
+            }
             fprintf(saida, "\tchar *%s = \"%s\";\n", (yyvsp[-1].var), (yyvsp[-1].var));
+            fprintf(saida, "\tint %s_status = 0;\n", (yyvsp[-1].var)); /* Cria uma variável de status para o dispositivo que comeca desligada */
              /* Liberando a memória alocada para o nome do dispositivo */
+             free((yyvsp[-1].var));
         }
-#line 1257 "sint_obsact.tab.c"
+#line 1258 "sint_obsact.tab.c"
     break;
 
   case 6: /* device: DISPOSITIVO DOIS_PONTOS ABRE_CHAVES IDENTIFICADOR VIRGULA IDENTIFICADOR FECHA_CHAVES  */
-#line 152 "sint_obsact.y"
+#line 153 "sint_obsact.y"
         {
+            if (contemNumeros((yyvsp[-3].var))) {
+                fprintf(stderr, "Erro: O nome do dispositivo '%s' não pode conter números.\n", (yyvsp[-3].var));
+                exit(EXIT_FAILURE); // Encerra o programa com erro
+            }
+            
             fprintf(saida, "\tchar *%s = \"%s\";\n", (yyvsp[-3].var), (yyvsp[-3].var));
-            fprintf(saida, "\tint %s;\n", (yyvsp[-1].var));
+            fprintf(saida, "\tint %s_status = 0;\n", (yyvsp[-3].var));
+            fprintf(saida, "\tint %s = 0;\n", (yyvsp[-1].var));
             free((yyvsp[-1].var)); // Liberando a memória alocada para o sensor
             free((yyvsp[-3].var)); // Liberando a memória alocada para o nome do dispositivo
             
         }
-#line 1269 "sint_obsact.tab.c"
+#line 1276 "sint_obsact.tab.c"
     break;
 
   case 11: /* cmd: act  */
-#line 175 "sint_obsact.y"
+#line 182 "sint_obsact.y"
         {
             // Ação simples, apenas imprime a ação
             fprintf(saida, "\t%s\n", (yyvsp[0].var));
             free((yyvsp[0].var)); // Liberando a memória alocada para a ação
         }
-#line 1279 "sint_obsact.tab.c"
+#line 1286 "sint_obsact.tab.c"
     break;
 
   case 12: /* attrib: SET IDENTIFICADOR IGUAL var  */
-#line 185 "sint_obsact.y"
+#line 192 "sint_obsact.y"
         {
             fprintf(saida, "\t%s = %s;\n", (yyvsp[-2].var), (yyvsp[0].var));
-             /* Liberando a memória alocada para o nome do atributo */
-             /* Liberando a memória alocada para o número */
+            free((yyvsp[-2].var));
+            free((yyvsp[0].var));
         }
-#line 1289 "sint_obsact.tab.c"
+#line 1296 "sint_obsact.tab.c"
     break;
 
   case 13: /* obsact: SE obs ENTAO act  */
-#line 193 "sint_obsact.y"
+#line 200 "sint_obsact.y"
         {
             fprintf(saida, "\tif (%s) {\n", (yyvsp[-2].var));
             fprintf(saida, "\t\t%s \n", (yyvsp[0].var));
             fprintf(saida, "\t}\n");
-             /* Liberando a memória alocada para a observação */
-             /* Liberando a memória alocada para a ação */
+            free((yyvsp[-2].var)); // Liberando a memória alocada para a observação
+            free((yyvsp[0].var)); // Liberando a memória alocada para a ação
 
         }
-#line 1302 "sint_obsact.tab.c"
+#line 1309 "sint_obsact.tab.c"
     break;
 
   case 14: /* obsact: SE obs ENTAO act SENAO act  */
-#line 203 "sint_obsact.y"
+#line 210 "sint_obsact.y"
         {
             fprintf(saida, "\tif (%s) {\n", (yyvsp[-4].var));
             fprintf(saida, "\t\t%s\n", (yyvsp[-2].var));
             fprintf(saida, "\t} else {\n");
             fprintf(saida, "\t\t%s\n", (yyvsp[0].var));
             fprintf(saida, "\t}\n");
-             /* Liberando a memória alocada para a observação */
-             /* Liberando a memória alocada para a ação */
-             /* Liberando a memória alocada para a ação */
+            free((yyvsp[-4].var)); // Liberando a memória alocada para a observação
+            free((yyvsp[-2].var)); // Liberando a memória alocada para a ação do if
+            free((yyvsp[0].var)); // Liberando a memória alocada para a ação do else
         }
-#line 1317 "sint_obsact.tab.c"
+#line 1324 "sint_obsact.tab.c"
     break;
 
   case 15: /* obs: IDENTIFICADOR oplogic var  */
-#line 216 "sint_obsact.y"
+#line 223 "sint_obsact.y"
         {
             // Calcula o tamanho necessário para a nova string: "var1 op var2"
             int len = strlen((yyvsp[-2].var)) + strlen((yyvsp[-1].var)) + strlen((yyvsp[0].var)) + 3; // +2 para espaços, +1 para '\0'
@@ -1326,16 +1333,18 @@ yyreduce:
                 sprintf((yyval.var), "%s %s %s", (yyvsp[-2].var), (yyvsp[-1].var), (yyvsp[0].var));
             }
             
-            // Libera a memória das partes que foram usadas
+            free((yyvsp[-2].var)); 
+            free((yyvsp[-1].var));
+            free((yyvsp[0].var));
             
             
             
         }
-#line 1335 "sint_obsact.tab.c"
+#line 1344 "sint_obsact.tab.c"
     break;
 
   case 16: /* obs: IDENTIFICADOR oplogic var E_LOGICO obs  */
-#line 231 "sint_obsact.y"
+#line 240 "sint_obsact.y"
         {
             // Calcula o tamanho para "var1 op var2 && condicao_anterior"
             int len = strlen((yyvsp[-4].var)) + strlen((yyvsp[-3].var)) + strlen((yyvsp[-2].var)) + strlen(" && ") + strlen((yyvsp[0].var)) + 1;
@@ -1345,91 +1354,92 @@ yyreduce:
             }
 
             // Libera a memória das partes
-            
-            
-            
-             // Libera a string da condição anterior, que foi copiada
+            free((yyvsp[-4].var));
+            free((yyvsp[-3].var));
+            free((yyvsp[-2].var));
+            free((yyvsp[0].var));
         }
-#line 1354 "sint_obsact.tab.c"
+#line 1363 "sint_obsact.tab.c"
     break;
 
   case 17: /* oplogic: IGUAL_LOGICO  */
-#line 248 "sint_obsact.y"
+#line 257 "sint_obsact.y"
         { 
             (yyval.var) = strdup("=="); /* Representando IGUAL_LOGICO como == */
         }
-#line 1362 "sint_obsact.tab.c"
+#line 1371 "sint_obsact.tab.c"
     break;
 
   case 18: /* oplogic: DIFERENTE  */
-#line 253 "sint_obsact.y"
+#line 262 "sint_obsact.y"
         { 
             (yyval.var) = strdup("!="); /* Representando DIFERENTE como != */
         }
-#line 1370 "sint_obsact.tab.c"
+#line 1379 "sint_obsact.tab.c"
     break;
 
   case 19: /* oplogic: MAIOR_IGUAL  */
-#line 258 "sint_obsact.y"
+#line 267 "sint_obsact.y"
         { 
             (yyval.var) = strdup(">="); /* Representando MAIOR_IGUAL como >= */
         }
-#line 1378 "sint_obsact.tab.c"
+#line 1387 "sint_obsact.tab.c"
     break;
 
   case 20: /* oplogic: MENOR_IGUAL  */
-#line 263 "sint_obsact.y"
+#line 272 "sint_obsact.y"
         { 
             (yyval.var) = strdup("<="); /* Representando MENOR_IGUAL como <= */
         }
-#line 1386 "sint_obsact.tab.c"
+#line 1395 "sint_obsact.tab.c"
     break;
 
   case 21: /* oplogic: MAIOR  */
-#line 268 "sint_obsact.y"
+#line 277 "sint_obsact.y"
         { 
             (yyval.var) = strdup(">"); /* Representando MAIOR como > */
         }
-#line 1394 "sint_obsact.tab.c"
+#line 1403 "sint_obsact.tab.c"
     break;
 
   case 22: /* oplogic: MENOR  */
-#line 273 "sint_obsact.y"
+#line 282 "sint_obsact.y"
         { 
             (yyval.var) = strdup("<"); /* Representando MENOR como < */
         }
-#line 1402 "sint_obsact.tab.c"
+#line 1411 "sint_obsact.tab.c"
     break;
 
   case 25: /* bool: TRUE  */
-#line 286 "sint_obsact.y"
+#line 295 "sint_obsact.y"
         { 
             (yyval.var) = strdup("1"); /* Representando TRUE como 1 */
         }
-#line 1410 "sint_obsact.tab.c"
+#line 1419 "sint_obsact.tab.c"
     break;
 
   case 26: /* bool: FALSE  */
-#line 291 "sint_obsact.y"
+#line 300 "sint_obsact.y"
         { 
             (yyval.var) = strdup("0"); /* Representando FALSE como 0 */
         }
-#line 1418 "sint_obsact.tab.c"
+#line 1427 "sint_obsact.tab.c"
     break;
 
   case 27: /* act: action IDENTIFICADOR  */
-#line 299 "sint_obsact.y"
+#line 308 "sint_obsact.y"
     {
         char* resultado = malloc(strlen((yyvsp[-1].var)) + strlen((yyvsp[0].var)) + 5);
-        sprintf(resultado, "%s(\"%s\");", (yyvsp[-1].var), (yyvsp[0].var));
+        sprintf(resultado, "%s(\"%s\", *%s_status );", (yyvsp[-1].var), (yyvsp[0].var), (yyvsp[0].var));
         (yyval.var) = resultado;
         free((yyvsp[0].var));
+        free((yyvsp[-1].var));
     }
-#line 1429 "sint_obsact.tab.c"
+#line 1439 "sint_obsact.tab.c"
     break;
 
   case 28: /* act: ENVIAR_ALERTA params IDENTIFICADOR  */
-#line 308 "sint_obsact.y"
+#line 318 "sint_obsact.y"
     {
         // Delega a construção da string para a função auxiliar
         
@@ -1439,11 +1449,11 @@ yyreduce:
         free((yyvsp[-1].var));
         free((yyvsp[0].var));
     }
-#line 1443 "sint_obsact.tab.c"
+#line 1453 "sint_obsact.tab.c"
     break;
 
   case 29: /* act: ENVIAR_ALERTA params PARA_TODOS DOIS_PONTOS namedevices  */
-#line 320 "sint_obsact.y"
+#line 330 "sint_obsact.y"
     {
         // Delega a construção do bloco de código para a função auxiliar
         printf("OI\n");
@@ -1456,41 +1466,41 @@ yyreduce:
         free((yyvsp[-3].var));
         free((yyvsp[0].var));
     }
-#line 1460 "sint_obsact.tab.c"
+#line 1470 "sint_obsact.tab.c"
     break;
 
   case 30: /* act: %empty  */
-#line 333 "sint_obsact.y"
+#line 343 "sint_obsact.y"
            {
         (yyval.var) = strdup(""); /* Representando ação vazia como string vazia */
     }
-#line 1468 "sint_obsact.tab.c"
+#line 1478 "sint_obsact.tab.c"
     break;
 
   case 31: /* params: MSG  */
-#line 339 "sint_obsact.y"
+#line 349 "sint_obsact.y"
         {
             (yyval.var) = malloc(strlen((yyvsp[0].var)) + 3 + strlen("alerta_simples"));
             sprintf((yyval.var), "alerta_simples, %s", (yyvsp[0].var));
             printf("%s\n", (yyval.var)); // Debug: Imprimindo a string formatada
-
+            free((yyvsp[0].var));
         }
-#line 1479 "sint_obsact.tab.c"
+#line 1489 "sint_obsact.tab.c"
     break;
 
   case 32: /* params: ABRE_PARENTESES MSG FECHA_PARENTESES  */
-#line 347 "sint_obsact.y"
+#line 357 "sint_obsact.y"
         {
             (yyval.var) = malloc(strlen((yyvsp[-1].var)) + 3 + strlen("alerta_simples"));
             sprintf((yyval.var), "alerta_simples, %s", (yyvsp[-1].var)); /* Representando MSG entre parênteses como mensagem */
-             printf("%s\n", (yyval.var)); // Debug: Imprimindo a string formatada
-
+            printf("%s\n", (yyval.var)); // Debug: Imprimindo a string formatada
+            free((yyvsp[-1].var));
         }
-#line 1490 "sint_obsact.tab.c"
+#line 1500 "sint_obsact.tab.c"
     break;
 
   case 33: /* params: ABRE_PARENTESES MSG VIRGULA IDENTIFICADOR FECHA_PARENTESES  */
-#line 355 "sint_obsact.y"
+#line 365 "sint_obsact.y"
         {
             (yyval.var) = malloc(strlen((yyvsp[-3].var)) + strlen((yyvsp[-1].var)) + 3 + strlen("alerta_comp"));
             sprintf((yyval.var), "alerta_comp, %s, %s", (yyvsp[-3].var), (yyvsp[-1].var)); /* Concatenando mensagem e variável 
@@ -1499,48 +1509,52 @@ yyreduce:
              /* Liberando a memória alocada para a mensagem */
              /* Liberando a memória alocada para a variável */
              printf("%s\n", (yyval.var)); // Debug: Imprimindo a string formatada
+            free((yyvsp[-3].var));
+            free((yyvsp[-1].var));
         }
-#line 1504 "sint_obsact.tab.c"
+#line 1516 "sint_obsact.tab.c"
     break;
 
   case 34: /* namedevices: IDENTIFICADOR  */
-#line 367 "sint_obsact.y"
+#line 379 "sint_obsact.y"
         {
             (yyval.var) = strdup((yyvsp[0].var)); /* Representando IDENTIFICADOR como nome do dispositivo */
         }
-#line 1512 "sint_obsact.tab.c"
+#line 1524 "sint_obsact.tab.c"
     break;
 
   case 35: /* namedevices: IDENTIFICADOR VIRGULA namedevices  */
-#line 372 "sint_obsact.y"
+#line 384 "sint_obsact.y"
         {
             (yyval.var) = malloc(strlen((yyvsp[-2].var)) + strlen((yyvsp[0].var)) + 2);
             sprintf((yyval.var), "%s, %s", (yyvsp[-2].var), (yyvsp[0].var));
              /* Liberando a memória alocada para o nome do dispositivo */
              /* Liberando a memória alocada para os nomes dos dispositivos */
+            free((yyvsp[-2].var));
+            free((yyvsp[0].var));
         }
-#line 1523 "sint_obsact.tab.c"
+#line 1537 "sint_obsact.tab.c"
     break;
 
   case 36: /* action: LIGAR  */
-#line 382 "sint_obsact.y"
+#line 396 "sint_obsact.y"
         {
             (yyval.var) = strdup("ligar"); /* Representando LIGAR como ligar */
         }
-#line 1531 "sint_obsact.tab.c"
+#line 1545 "sint_obsact.tab.c"
     break;
 
   case 37: /* action: DESLIGAR  */
-#line 387 "sint_obsact.y"
+#line 401 "sint_obsact.y"
         {
             (yyval.var) = strdup("desligar"); /* Representando DESLIGAR como desligar 8*/
 
         }
-#line 1540 "sint_obsact.tab.c"
+#line 1554 "sint_obsact.tab.c"
     break;
 
 
-#line 1544 "sint_obsact.tab.c"
+#line 1558 "sint_obsact.tab.c"
 
       default: break;
     }
@@ -1733,7 +1747,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 396 "sint_obsact.y"
+#line 410 "sint_obsact.y"
 
 
 void yyerror(const char *s) {
@@ -1751,15 +1765,18 @@ int main() {
     
 
     // Correção: trocar "%s" por "%%s" para que a string literal "%s" seja escrita no arquivo.
-    fprintf(saida, "\tvoid ligar(char* namedevice)\n\t{\n\t\tprintf(\"%%s ligado!\\n\", namedevice);\n\t}\n\n");
+    fprintf(saida, "\tvoid ligar(char* namedevice, int *status_device)\n\t{\n\t\tif (*status_device == 1) {\n\t\t\tprintf(\"O Dispositivo ja esta ligado!\\n\");\n\t\t} else {\n\t\t\t*status_device = 1;\n\t\t\tprintf(\"%%s ligado!\\n\", namedevice);\n\t\t}\n\t}\n\n");
 
-    fprintf(saida, "\tvoid desligar(char* namedevice)\n\t{\n\t\tprintf(\"%%s desligado!\\n\", namedevice);\n\t}\n\n");
+    fprintf(saida, "\tvoid desligar(char* namedevice, int* status_device)\n\t{\n\t\tif (*status_device == 0) {\n\t\t\tprintf(\"O Dispositivo ja esta desligado!\\n\");\n\t\t} else {\n\t\t\t*status_device = 0;\n\t\t\tprintf(\"%%s desligado!\\n\", namedevice);\n\t\t}\n\t}\n\n");
+
 
     fprintf(saida, "\tvoid alerta_simples(char* namedevice, char* msg)\n\t{\n\t\tprintf(\"%%s recebeu o alerta:\\n\", namedevice);\n\t\tprintf(\"%%s\\n\", msg);\n\t}\n\n");
 
     // Nota: Você tem duas funções com o mesmo nome "alerta", o que causaria um erro de compilação.
     // Renomeei a segunda para "alerta2" como exemplo.
     fprintf(saida, "\tvoid alerta_comp(char* namedevice, char* msg, char* var)\n\t{\n\t\tprintf(\"%%s recebeu o alerta:\\n\", namedevice);\n\t\tprintf(\"%%s %%s\\n\", msg, var);\n\t}\n\n");
+
+    fprintf(saida, "\tvoid verifica_status(char* namedevice, int *status_device)\n\t{\n\t\tif (*status_device == 1) {\n\t\t\tprintf(\"%%s está ativo!\\n\", namedevice);\n\t\t} else {\n\t\t\tprintf(\"%%s está inativo!\\n\", namedevice);\n\t\t}\n\t}\n\n");
 
     fprintf(saida, "int main() {\n\n");
     yyparse(); //Aqui a mágica acontece e o programa é traduzido.

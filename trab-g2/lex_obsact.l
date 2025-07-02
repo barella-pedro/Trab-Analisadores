@@ -38,13 +38,28 @@
 "="              { return IGUAL; } 
 
 
-\"[^"]*\"       { yylval.var = strdup(yytext); return MSG; }
+\"[^"]*\"       {
+    if (yyleng - 2 > 100) {
+        fprintf(stderr, "Erro Léxico: Mensagem excede o limite de 100 caracteres.\n");
+    } else {
+        yylval.var = strdup(yytext);
+        return MSG;
+    }
+}
 
 [0-9]+          { yylval.var = strdup(yytext); return NUM; } 
 
 
-[a-zA-Z][a-zA-Z0-9_]* { yylval.var = strdup(yytext); return IDENTIFICADOR; }
+[a-zA-Z][a-zA-Z0-9_]* {
+    if (yyleng > 100) {
+        fprintf(stderr, "Erro Léxico: Identificador '%.100s...' excede o limite de 100 caracteres.\n", yytext);
 
+    } 
+    else {
+        yylval.var = strdup(yytext);
+        return IDENTIFICADOR;
+    }
+}
 
 [ \t\n]+              {  }
 
