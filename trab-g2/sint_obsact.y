@@ -46,6 +46,7 @@ char* construir_chamada_alerta(const char* dados_params, const char* device_nome
  */
 char* construir_bloco_broadcast(const char* dados_params, const char* lista_devices) {
     // --- Passo 1: Pré-calcular o tamanho total do buffer ---
+    printf("Dados Params: %s\n", dados_params); // Debug: Imprimindo os parâmetros recebidos
     size_t tamanho_total = 0;
     char* copia_params = strdup(dados_params);
     char* copia_devices = strdup(lista_devices);
@@ -89,9 +90,9 @@ char* construir_bloco_broadcast(const char* dados_params, const char* lista_devi
         
         char linha_atual[512]; // Buffer temporário para cada linha
         if (strcmp(nome_funcao, "alerta_simples") == 0) {
-            sprintf(linha_atual, "\t%s(%s, %s);", nome_funcao, device_atual, msg);
+            sprintf(linha_atual, "%s(%s, %s);", nome_funcao, device_atual, msg);
         } else {
-            sprintf(linha_atual, "\t\t%s(%s, %s, %s);", nome_funcao, device_atual, msg, var_name);
+            sprintf(linha_atual, "%s(%s, %s, %s);", nome_funcao, device_atual, msg, var_name);
         }
         strcat(bloco_de_codigo, linha_atual);
         if (i < num_devices - 1) {
@@ -162,6 +163,7 @@ cmds:
         cmd PONTO_FINAL cmds
         |
         cmd PONTO_FINAL
+    
         ;
 
 cmd:
@@ -170,6 +172,11 @@ cmd:
         obsact
         |
         act
+        {
+            // Ação simples, apenas imprime a ação
+            fprintf(saida, "\t%s\n", $1);
+            free($1); // Liberando a memória alocada para a ação
+        }
         ;
 
 
@@ -291,7 +298,7 @@ act:
     action IDENTIFICADOR
     {
         char* resultado = malloc(strlen($1) + strlen($2) + 5);
-        sprintf(resultado, "%s(\\\"%s\\\")", $1, $2);
+        sprintf(resultado, "%s(\"%s\");", $1, $2);
         $$ = resultado;
         free($2);
     }
@@ -300,7 +307,8 @@ act:
     ENVIAR_ALERTA params IDENTIFICADOR
     {
         // Delega a construção da string para a função auxiliar
-        $$ = construir_chamada_alerta($2, $3);
+        
+        $$ = construir_bloco_broadcast($2, $3);
 
         // Libera a memória usada pelos tokens
         free($2);
@@ -311,11 +319,19 @@ act:
     ENVIAR_ALERTA params PARA_TODOS DOIS_PONTOS namedevices
     {
         // Delega a construção do bloco de código para a função auxiliar
+        printf("OI\n");
+        printf("%s\n", $2); // Debug: Imprimindo os parâmetros recebidos
+        printf("%s\n", $5); // Debug: Imprimindo os dispositivos recebidos
         $$ = construir_bloco_broadcast($2, $5);
-
+        printf("%s\n", $$); // Debug: Imprimindo o bloco de código construído
+        
         // Libera a memória usada pelos tokens
         free($2);
         free($5);
+    }
+    |
+    %empty {
+        $$ = strdup(""); /* Representando ação vazia como string vazia */
     }
     ;
 params: 

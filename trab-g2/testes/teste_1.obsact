@@ -1,1 +1,5 @@
 dispositivo: {Termometro, temperatura}
+
+bison -d sint_obsact.y
+flex lex_obsact.l
+gcc -o meu_analisador sint_obsact.tab.c lex.yy.c -lfl

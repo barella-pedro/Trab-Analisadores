@@ -91,7 +91,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 112 "sint_obsact.y"
+#line 113 "sint_obsact.y"
 
     char *var; /** Campos de yyval */
 

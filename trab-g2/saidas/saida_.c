@@ -33,6 +33,14 @@ int main() {
 	int potencia;
 	char *Monitor = "Monitor";
 	potencia = 100;
+	if (umidade < 40) {
+		alerta_simples(Monitor,  " Ar seco detectado "); 
+	}
+	if (movimento == 1) {
+		
+	} else {
+		desligar("lampada");
+	}
 
 return 0;
 }
